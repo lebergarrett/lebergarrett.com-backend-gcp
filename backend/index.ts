@@ -35,7 +35,7 @@ const websiteBackend = new gcp.compute.BackendBucket(siteName, {
 
 const websiteSslCertificate = new gcp.compute.ManagedSslCertificate(siteName, {
     managed: {
-        domains: [`${siteDomain}.`],
+        domains: [`${siteDomain}.`, `www.${siteDomain}.`],
     }
 });
 
@@ -67,10 +67,23 @@ const websiteUrlmap = new gcp.compute.URLMap(siteName, {
     // }],
 });
 
+const httpToHttpsUrlMap = new gcp.compute.URLMap(`${siteName}-http-to-https`, {
+    description: "HTTP to HTTPS redirect for static website",
+    defaultUrlRedirect: {
+        stripQuery: false,
+        httpsRedirect: true,
+    }
+});
+
 const websiteTargetHttpsProxy = new gcp.compute.TargetHttpsProxy(siteName, {
     urlMap: websiteUrlmap.id,
     sslCertificates: [websiteSslCertificate.id],
 });
+
+const httpToHttpsProxy = new gcp.compute.TargetHttpProxy(`${siteName}-http-to-https`, {
+    urlMap: httpToHttpsUrlMap.id,
+});
+
 
 const websiteGlobalAddress = new gcp.compute.GlobalAddress(siteName, {});
 
@@ -79,6 +92,14 @@ const websiteGlobalForwardingRule = new gcp.compute.GlobalForwardingRule(siteNam
     loadBalancingScheme: "EXTERNAL",
     portRange: "443",
     target: websiteTargetHttpsProxy.selfLink,
+    ipAddress: websiteGlobalAddress.id,
+});
+
+const httpToHttpsForwardingRule = new gcp.compute.GlobalForwardingRule(`${siteName}-http-to-https`, {
+    ipProtocol: "TCP",
+    loadBalancingScheme: "EXTERNAL",
+    portRange: "80",
+    target: httpToHttpsProxy.selfLink,
     ipAddress: websiteGlobalAddress.id,
 });
 

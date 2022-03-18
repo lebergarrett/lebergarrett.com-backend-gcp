@@ -1,17 +1,16 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 
-const websiteBucket = new gcp.storage.Bucket("lebergarrett", {
+const siteDomain = "lebergarrett.com";
+const siteName = "lebergarrett";
+
+const websiteBucket = new gcp.storage.Bucket(siteName, {
     cors: [{
         maxAgeSeconds: 3600,
         methods: [
             "GET",
-            "HEAD",
-            "PUT",
-            "POST",
-            "DELETE",
         ],
-        origins: ["*"],
+        origins: [`https://${siteDomain}`, `https://www.${siteDomain}`],
         responseHeaders: ["*"],
     }],
     forceDestroy: true,
@@ -22,10 +21,86 @@ const websiteBucket = new gcp.storage.Bucket("lebergarrett", {
     },
 });
 
-const publicRule = new gcp.storage.BucketAccessControl("lebergarrett", {
+const bucketReader = new gcp.storage.DefaultObjectAccessControl(siteName, {
     bucket: websiteBucket.name,
     role: "READER",
     entity: "allUsers",
+});
+
+const websiteBackend = new gcp.compute.BackendBucket(siteName, {
+    description: "Backend for static website",
+    bucketName: websiteBucket.name,
+    enableCdn: true,
+});
+
+const websiteSslCertificate = new gcp.compute.ManagedSslCertificate(siteName, {
+    managed: {
+        domains: [`${siteDomain}.`],
+    }
+});
+
+const websiteUrlmap = new gcp.compute.URLMap(siteName, {
+    description: "URLmap for static website",
+    defaultService: websiteBackend.id,
+    hostRules: [
+        {
+            hosts: [siteDomain],
+            pathMatcher: "all-paths",
+        },
+    ],
+    pathMatchers: [
+        {
+            name: "all-paths",
+            defaultService: websiteBackend.id,
+            pathRules: [
+                {
+                    paths: ["/*"],
+                    service: websiteBackend.id,
+                }
+            ]
+        },
+    ],
+    // tests: [{
+    //     service: staticBackendBucket.id,
+    //     host: "hi.com",
+    //     path: "/home",
+    // }],
+});
+
+const websiteTargetHttpsProxy = new gcp.compute.TargetHttpsProxy(siteName, {
+    urlMap: websiteUrlmap.id,
+    sslCertificates: [websiteSslCertificate.id],
+});
+
+const websiteGlobalAddress = new gcp.compute.GlobalAddress(siteName, {});
+
+const websiteGlobalForwardingRule = new gcp.compute.GlobalForwardingRule(siteName, {
+    ipProtocol: "TCP",
+    loadBalancingScheme: "EXTERNAL",
+    portRange: "443",
+    target: websiteTargetHttpsProxy.selfLink,
+    ipAddress: websiteGlobalAddress.id,
+});
+
+const websiteDnsZone = new gcp.dns.ManagedZone(siteName, {
+    description: "lebergarrett.com DNS zone",
+    dnsName: `${siteDomain}.`,
+});
+
+const websiteDnsRecord = new gcp.dns.RecordSet(siteName, {
+    name: pulumi.interpolate`${websiteDnsZone.dnsName}`,
+    type: "A",
+    ttl: 300,
+    managedZone: websiteDnsZone.name,
+    rrdatas: [websiteGlobalAddress.address],
+});
+
+const websiteCname = new gcp.dns.RecordSet(`${siteName}-cname`, {
+    name: pulumi.interpolate`www.${websiteDnsZone.dnsName}`,
+    managedZone: websiteDnsZone.name,
+    type: "CNAME",
+    ttl: 300,
+    rrdatas: [`${siteDomain}.`],
 });
 
 // Export the DNS name of the bucket

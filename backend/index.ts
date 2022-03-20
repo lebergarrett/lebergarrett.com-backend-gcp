@@ -124,5 +124,9 @@ const websiteCname = new gcp.dns.RecordSet(`${siteName}-cname`, {
     rrdatas: [`${siteDomain}.`],
 });
 
+// ----- Visitors Application -----
+
+// have Cloud Function create the firestore document instead of Pulumi
+
 // Export the DNS name of the bucket
-export const bucketName = websiteBucket.url;
+//export const bucketName = websiteBucket.url;

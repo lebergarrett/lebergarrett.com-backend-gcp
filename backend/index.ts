@@ -128,5 +128,13 @@ const websiteCname = new gcp.dns.RecordSet(`${siteName}-cname`, {
 
 // have Cloud Function create the firestore document instead of Pulumi
 
+const visitorFunction = new gcp.cloudfunctions.HttpCallbackFunction(siteName, {
+    runtime: "python3.9",
+    callback: (req, res) => {
+        // function here
+    },
+})
+
+
 // Export the DNS name of the bucket
 //export const bucketName = websiteBucket.url;

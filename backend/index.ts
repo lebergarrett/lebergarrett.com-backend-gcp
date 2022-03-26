@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
+import { googlePartnerName } from "@pulumi/gcp/config";
 
 const siteDomain = "lebergarrett.com";
 const siteName = "lebergarrett";
@@ -132,6 +133,24 @@ const visitorFunction = new gcp.cloudfunctions.HttpCallbackFunction(siteName, {
     runtime: "python3.9",
     callback: (req, res) => {
         // function here
+        from google.cloud import firestore
+
+        database = firestore.Client()
+        visitor_nb = 0
+        visitor_ref = database.collection(u'visitors').document(u'visitor_count')
+        doc = visitor_ref.get()
+        if doc.exists:
+            visitor_nb = int(doc.to_dict()['lebergarrett.com'])
+
+        hitcount = str(visitor_nb + 1)
+        visitor_ref.set({ 'lebergarrett.com': visitor_nb })
+
+        return {
+            "isBase64Encoded": "false",
+            "statusCode": 200,
+            "headers": { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" },
+            "body": hitcount
+        }
     },
 })
 

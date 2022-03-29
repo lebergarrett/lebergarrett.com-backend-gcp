@@ -1,0 +1,21 @@
+name: Cloud Function Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  lambda_function_test:
+    name: Lambda Function Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Install pip dependencies for unit test
+        run: pip3 install -r function/requirements.txt
+
+      - name: Cloud Function unit test
+        run: python3 function/test_main.py

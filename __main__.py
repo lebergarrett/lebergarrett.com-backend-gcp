@@ -1,3 +1,5 @@
+import time
+import os
 import pulumi
 import pulumi_gcp as gcp
 
@@ -117,16 +119,51 @@ website_cname = gcp.dns.RecordSet(f"{site_name}-cname",
     rrdatas=[f"{site_domain}."]
 )
 
-# Visitors Application
+# ----- Visitors Application -----
 
-# visitor_function = gcp.cloudfunctions.Function(site_name,
-#     description="Visitors app function",
-#     runtime="python3.9",
-#     available_memory_mb=128,
-#     source_archive_bucket="", #TODO
-#     source_archive_object="", #TODO
-#     trigger_http=True,
-#     entry_point="visitor_count"
-# )
-# Export the DNS name of the bucket
-#pulumi.export('bucket_name', bucket.url)
+# File path to where the Cloud Function's source code is located.
+PATH_TO_SOURCE_CODE = "./function"
+
+# We will store the source code to the Cloud Function in a Google Cloud Storage bucket.
+function_bucket = gcp.storage.Bucket(f"{site_name}-cloudfunction",
+    location="US",
+)
+
+# The Cloud Function source code itself needs to be zipped up into an
+# archive, which we create using the pulumi.AssetArchive primitive.
+assets = {}
+for file in os.listdir(PATH_TO_SOURCE_CODE):
+    location = os.path.join(PATH_TO_SOURCE_CODE, file)
+    asset = pulumi.FileAsset(path=location)
+    assets[file] = asset
+
+archive = pulumi.AssetArchive(assets=assets)
+
+# Create the single Cloud Storage object, which contains all of the function's
+# source code. ("main.py" and "requirements.txt".)
+function_object = gcp.storage.BucketObject(f"{site_name}-cloudfunction",
+    name="main.py-%f" % time.time(),
+    bucket=function_bucket.name,
+    source=archive)
+
+# Create the Cloud Function, deploying the source we just uploaded to Google
+# Cloud Storage.
+visitor_function = gcp.cloudfunctions.Function(f"{site_name}-cloudfunction",
+    available_memory_mb=128,
+    entry_point="visitor_count",
+    region="us-central1",
+    runtime="python37",
+    source_archive_bucket=function_bucket.name,
+    source_archive_object=function_object.name,
+    trigger_http=True)
+
+function_iam = gcp.cloudfunctions.FunctionIamMember(f"{site_name}-cloudfunction",
+    project=visitor_function.project,
+    region=visitor_function.region,
+    cloud_function=visitor_function.name,
+    role="roles/cloudfunctions.invoker",
+    member="allUsers",
+)
+
+# Export the cloud function URL.
+pulumi.export("function_url", visitor_function.https_trigger_url)

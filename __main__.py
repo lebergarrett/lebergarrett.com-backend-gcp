@@ -8,6 +8,7 @@ site_name = "lebergarrett"
 
 
 website_bucket = gcp.storage.Bucket(site_name, 
+    name=site_domain,
     cors=[gcp.storage.BucketCorArgs(
         max_age_seconds=3600,
         methods=[
@@ -98,10 +99,7 @@ http_to_https_forwarding_rule = gcp.compute.GlobalForwardingRule(f"{site_name}-h
     ip_address=website_global_address.id,
 )
 
-website_dns_zone = gcp.dns.ManagedZone(site_name,
-    description=f"{site_domain} DNS zone",
-    dns_name=f"{site_domain}.",
-)
+website_dns_zone = gcp.dns.get_managed_zone(name=site_name)
 
 website_dns_record = gcp.dns.RecordSet(site_name,
     name=website_dns_zone.dns_name,
@@ -112,7 +110,7 @@ website_dns_record = gcp.dns.RecordSet(site_name,
 )
 
 website_cname = gcp.dns.RecordSet(f"{site_name}-cname",
-    name=website_dns_zone.dns_name.apply(lambda dns_name: f"www.{dns_name}"),
+    name=f"www.{website_dns_zone.dns_name}",
     managed_zone=website_dns_zone.name,
     type="CNAME",
     ttl=300,

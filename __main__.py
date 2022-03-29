@@ -142,7 +142,8 @@ archive = pulumi.AssetArchive(assets=assets)
 function_object = gcp.storage.BucketObject(f"{site_name}-cloudfunction",
     name="main.py-%f" % time.time(),
     bucket=function_bucket.name,
-    source=archive)
+    source=archive
+)
 
 # Create the Cloud Function, deploying the source we just uploaded to Google
 # Cloud Storage.
@@ -153,7 +154,8 @@ visitor_function = gcp.cloudfunctions.Function(f"{site_name}-cloudfunction",
     runtime="python37",
     source_archive_bucket=function_bucket.name,
     source_archive_object=function_object.name,
-    trigger_http=True)
+    trigger_http=True
+)
 
 function_iam = gcp.cloudfunctions.FunctionIamMember(f"{site_name}-cloudfunction",
     project=visitor_function.project,

@@ -11,9 +11,9 @@ def visitor_count(req):
     hit_count = str(prev_count + 1)
     visitor_ref.set({ 'lebergarrett.com': hit_count })
 
-    return {
-        "isBase64Encoded": "false",
-        "statusCode": 200,
-        "headers": { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" },
-        "body": hit_count
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST",
     }
+
+    return (hit_count, 200, headers)

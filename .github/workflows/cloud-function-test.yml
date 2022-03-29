@@ -11,16 +11,11 @@ jobs:
     name: Cloud Function Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      
-      - name: Install pip dependencies for unit test
-        run: pip3 install -r function/requirements.txt
-      
+      - uses: actions/checkout@v2
+      - run: pip3 install -r function/requirements.txt
       - id: 'auth'
         uses: 'google-github-actions/auth@v0'
         with:
           credentials_json: '${{ secrets.gcp_credentials }}'
-
       - name: Cloud Function unit test
         run: python3 function/test_main.py

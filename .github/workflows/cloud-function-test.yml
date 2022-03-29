@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  lambda_function_test:
-    name: Lambda Function Test
+  cloud_function_test:
+    name: Cloud Function Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

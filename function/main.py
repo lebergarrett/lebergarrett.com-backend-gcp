@@ -12,7 +12,7 @@ def visitor_count(req):
     visitor_ref.set({ 'lebergarrett.com': hit_count })
 
     headers = {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "https://lebergarrett.com, https://www.lebergarrett.com",
         "Access-Control-Allow-Methods": "GET, POST",
     }
 
